@@ -6,8 +6,8 @@ description: >
   or "help me choose an architecture with the advisor". Do NOT trigger automatically
   when architecture topics come up in conversation. When invoked: recommends and persists
   the best software architecture for a project by auto-detecting the stack, running a
-  scored quiz, and writing the decision into CLAUDE.md / AGENTS.md plus a numbered ADR
-  in /adr. Covers the full spectrum (Modular Monolith, Clean, Hexagonal, Screaming, DDD,
+  scored quiz, and writing the decision into AGENTS.md / CLAUDE.md (whichever exists,
+  defaulting to AGENTS.md as the open standard) plus a numbered ADR in /adr. Covers the full spectrum (Modular Monolith, Clean, Hexagonal, Screaming, DDD,
   CQRS, Event-Driven, Microservices, Layered, Serverless, MVC/MVP/MVVM, Pipeline,
   Space-Based, hybrids). Can also audit an existing codebase and propose an incremental
   migration plan.
@@ -30,7 +30,7 @@ Look for and read what's relevant:
 - **Existing structure**: list top-level folders only (`src/`, `modules/`, `domain/`, `cmd/`, `internal/`, `services/`, `functions/`) — do not recurse
 - **Deployment signals** (root only): `Dockerfile`, `docker-compose.yml`, `serverless.yml`, one `*.tf` file if present, `vercel.json`
 - **Scale/team signals**: `nx.json`, `turbo.json`, `pnpm-workspace.yaml` — count top-level service/app folders in a monorepo, no deeper
-- **Existing decisions**: check for `/adr`, `/docs/adr`, `/docs/decisions` folders and read only `README.md` or the most recent ADR if present; read `## Architecture` section in `CLAUDE.md`/`AGENTS.md` if the file exists
+- **Existing decisions**: check for `/adr`, `/docs/adr`, `/docs/decisions` folders and read only `README.md` or the most recent ADR if present; read `## Architecture` section in `AGENTS.md`/`CLAUDE.md` (check both) if either exists
 
 From this, infer provisional answers (e.g. "Go + Chi + Redis, single `cmd/` + `internal/`, Dockerfile present → likely a single-team service on containers"). Present these inferences alongside the quiz so the user just adjusts them.
 
@@ -192,17 +192,22 @@ After the scoreboard, commit to one with this structure:
 After the user confirms, write everything **without asking permission** (except scaffolding + linter, see 3.4). This is the expected output of the skill.
 
 ### 3.1 Detect the agent config file
-In order: `CLAUDE.md` → `AGENTS.md` → `.cursor/rules`/`CURSOR_RULES.md` → `COPILOT.md`. If none exist, create `CLAUDE.md`.
+Scan for all of: `AGENTS.md`, `CLAUDE.md`, `.cursor/rules`/`CURSOR_RULES.md`, `COPILOT.md`, `.github/copilot-instructions.md`.
+
+- **If multiple exist** → write the `## Architecture` section into **every one of them**. Keep the content identical across files.
+- **If exactly one exists** → write into that one.
+- **If none exist** → create `AGENTS.md` — it is the most tool-agnostic format (recognised by Claude, Codex, Gemini CLI, Amp, and others).
 
 ### 3.2 Write the `## Architecture` section
 
-If **no** `## Architecture` section exists: add it directly, no confirmation needed.
+Apply this check **per file** (each target file is checked independently):
 
-If a `## Architecture` section **already exists**: show the user what's there and ask for explicit confirmation before replacing it — a prior architectural decision may have been intentional. Do not overwrite silently. Example:
+- **No `## Architecture` section exists in this file** → add it directly, no confirmation needed.
+- **`## Architecture` section already exists in this file** → show the user what's there and ask for explicit confirmation before replacing it. Example:
 
-> "I found an existing `## Architecture` section in CLAUDE.md (pattern: Layered, dated 2024-03-10). Replace it with the new decision (Modular Monolith + Clean, today)? This will also create ADR-002 superseding ADR-001."
+> "I found an existing `## Architecture` section in AGENTS.md (pattern: Layered, dated 2024-03-10). Replace it with the new decision (Modular Monolith + Clean, today)? This will also create ADR-002 superseding ADR-001."
 
-Only proceed after the user confirms. Never delete unrelated content in the file.
+When writing to multiple files, batch the confirmation into a single question if more than one has an existing section. Never delete unrelated content in any file.
 
 ```markdown
 ## Architecture
@@ -245,7 +250,7 @@ Ask the user two yes/no questions:
 ### 3.5 Confirmation summary
 ```
 ✅ Architecture decision persisted:
-- [CLAUDE.md/AGENTS.md] — ## Architecture section written (with enforceable rules)
+- [list every file written, e.g. AGENTS.md ✓, CLAUDE.md ✓] — ## Architecture section written (with enforceable rules)
 - /adr/NNN-[slug].md — ADR created [folder + index created ✓ if new]
 - [scaffold: created N folders ✓ / skipped]
 - [linter: .dependency-cruiser.js created ✓ / skipped]

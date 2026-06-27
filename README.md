@@ -1,6 +1,6 @@
 # Architecture Advisor
 
-A Claude Code skill that recommends and persists the right software architecture for your project — or audits the one you already have.
+A skill that recommends and persists the right software architecture for your project — or audits the one you already have.
 
 ## What it does
 

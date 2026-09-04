@@ -1,21 +1,18 @@
 ---
 name: architecture-advisor
 description: >
-  MANUAL USE ONLY — only invoke this skill when the user explicitly asks for it by name
-  or says something like "run the architecture advisor", "use the architecture skill",
-  or "help me choose an architecture with the advisor". Do NOT trigger automatically
-  when architecture topics come up in conversation. When invoked: recommends and persists
-  the best software architecture for a project by auto-detecting the stack, running a
-  scored quiz, recommending a compatible architecture composition by dimension, and writing the decision into AGENTS.md / CLAUDE.md (whichever exists,
-  defaulting to AGENTS.md as the open standard) plus a numbered ADR in /adr. Covers the full spectrum (Modular Monolith, Clean, Hexagonal, Screaming, DDD,
-  CQRS, Event-Driven, Microservices, Layered, Serverless, MVC/MVP/MVVM, Pipeline,
-  Space-Based, hybrids). Can also audit an existing codebase and propose an incremental
-  migration plan.
+  MANUAL USE ONLY — invoke only when the user asks for the architecture advisor by name.
+  Audit branch: user asks to audit the current architecture. Recommends and persists a
+  compatible architecture composition by dimension with a scored quiz and ADR.
+license: Apache-2.0
+metadata:
+  author: PabloViniegra
+  version: "1.0"
 ---
 
 # Architecture Advisor
 
-A structured decision engine: **detect → quiz → score by dimension → compose → persist**. It works for greenfield projects and for auditing existing codebases, and it always leaves behind enforceable rules and an ADR so the decision doesn't erode over time.
+A structured decision engine: **detect → quiz → score by dimension → compose → persist**. It works for greenfield projects and for auditing existing codebases, and it always leaves behind enforceable rules and an ADR.
 
 ---
 
@@ -27,7 +24,7 @@ A structured decision engine: **detect → quiz → score by dimension → compo
 
 Look for and read what's relevant:
 - **Language & deps** (root only): `package.json`, `go.mod`, `pyproject.toml`/`requirements.txt`, `pom.xml`, `Cargo.toml`, `composer.json`
-- **Existing structure**: list top-level folders only (`src/`, `modules/`, `domain/`, `cmd/`, `internal/`, `services/`, `functions/`) — do not recurse
+- **Existing structure**: list top-level folders only (`src/`, `modules/`, `domain/`, `cmd/`, `internal/`, `services/`, `functions/`)
 - **Deployment signals** (root only): `Dockerfile`, `docker-compose.yml`, `serverless.yml`, one `*.tf` file if present, `vercel.json`
 - **Scale/team signals**: `nx.json`, `turbo.json`, `pnpm-workspace.yaml` — count top-level service/app folders in a monorepo, no deeper
 - **Existing decisions**: check for `/adr`, `/docs/adr`, `/docs/decisions` folders and read only `README.md` or the most recent ADR if present; read `## Architecture` section in `AGENTS.md`/`CLAUDE.md` (check both) if either exists
@@ -47,7 +44,7 @@ Decide the branch based on detection:
   - "Recommend an architecture for this project from scratch", or
   - "Audit the architecture you already have and plan a migration."
 
-The audit path is covered in Phase 5.
+The audit path is covered in Phase 5. If Q5 is C/D, default to the audit branch unless the user explicitly picks "from scratch".
 
 ---
 
@@ -112,11 +109,11 @@ If answers are contradictory (e.g. Q3:A + Q4:F), flag it in one sentence before 
 
 ## Phase 2 — Transparent scoring by dimension + recommendation
 
-Don't force unrelated architecture concepts into one ranking. Score candidates within their dimension, show the work, then compose a compatible recommendation.
+Architecture concepts from different dimensions are not interchangeable. Score candidates only within their dimension, show the work, then compose a compatible recommendation.
 
 ### 2.1 Show the scoreboard
 
-Produce one compact table with the winner and runner-up in each relevant dimension. Include the numeric score, star rating, and a one-line reason tied to confirmed answers.
+Produce one compact table with, per dimension, the winner (or None/default) plus the highest-scoring alternative and its score even when below the optional-overlay threshold, so the threshold decision is auditable. Include the numeric score, star rating, and a one-line reason tied to confirmed answers.
 
 **Scoring rubric — apply mechanically, not by feel:**
 
@@ -129,12 +126,12 @@ Each candidate starts at 0. Compare candidates only within the same dimension. S
 | Q3 matches a "best-fit" signal | +1 |
 | At least one selected Q4 priority matches this candidate's best-fit signals | +1 |
 | Q5 matches a "best-fit" signal | +1 |
-| A confirmed Q6 tag matches this candidate's best-fit signals | +1 |
+| At least one confirmed Q6 tag matches this candidate's best-fit signals | +1 (cap: +1 per pattern total) |
 | Any answer matches an "avoid when" condition | −2 (cap: −2 per pattern total) |
 
 Maximum: 6 points. Convert to stars: 6=★★★★★, 5=★★★★☆, 3–4=★★★☆☆, 1–2=★★☆☆☆, 0 or below=★☆☆☆☆. Always show the numeric score in parentheses so the rating is auditable.
 
-In the catalogue, ranges such as `Q3:A-B` mean A or B. A `+` between signals means all are required. Commas separate independent scoring signals or avoid conditions.
+In the catalogue, ranges such as `Q3:A-B` mean A or B. A `+` between signals means all are required. Commas separate independent scoring signals or avoid conditions. Example: `Q3:A-B + Q6:H not confirmed` fires only when (Q3 is A or B) AND (H unconfirmed); `Q3:A-B, Q5:A-B` fires when either holds. Each firing costs −2 once per pattern.
 
 Deployment topology and internal boundaries are baseline dimensions: select one winner in each. Domain model, presentation, data and integration, and runtime are optional overlays: include a non-default candidate only when it scores at least 3 without an avoid-condition hit. Evaluate each data and integration candidate independently because CQRS, EDA, and Pipeline may coexist.
 
@@ -174,7 +171,7 @@ Choose at most one candidate from each dimension except data and integration, wh
 | **Presentation pattern** | None (default) | Q1:B-E | No avoid condition |
 | | MVC / MVP / MVVM | Q1:A, Q2:A-B | Q2:C-D |
 | **Data and integration** | None (default) | Default; no score required | No avoid condition |
-| | CQRS | Q4:D, Q6:`asymmetric_reads_writes`, Q6:`strict_auditability` | Q2:A-B, Q3:A-B + neither Q6:B nor Q6:C confirmed |
+| | CQRS | Q4:D, Q6:`asymmetric_reads_writes`, Q6:`strict_auditability` | Q2:A-B, Q3:A-B + Q6:B not confirmed + Q6:C not confirmed |
 | | Event-Driven / EDA | Q1:C, Q4:D-F, Q6:`asynchronous_workflows` | Q3:A-B + Q6:D not confirmed |
 | | Pipeline / Pipes & Filters | Q1:D | Q1:A-B |
 | **Runtime model** | Conventional runtime (default) | Default; no score required | No avoid condition |
@@ -218,7 +215,7 @@ After the dimension scoreboard, commit to one compatible composition with this s
 [What to adopt when you outgrow this — ties to the ADR review triggers]
 
 ### Folder structure
-[Concrete tree using domain language from detected code and the user's free-text context — never UserService/OrderRepo placeholders]
+[Concrete tree using domain names from Phase 0 detection and free-text context — never UserService/OrderRepo placeholders]
 ```
 
 ---
@@ -243,7 +240,7 @@ Apply this check **per file** (each target file is checked independently):
 
 > "I found an existing `## Architecture` section in AGENTS.md (pattern: Layered, dated 2024-03-10). Replace it with the new decision (Modular Monolith + Clean, today)? This will also create ADR-002 superseding ADR-001."
 
-When writing to multiple files, batch the confirmation into a single question if more than one has an existing section. Never delete unrelated content in any file.
+When writing to multiple files, batch the confirmation into a single question if more than one has an existing section. Edit only the `## Architecture` section; leave all other sections byte-identical. Never delete unrelated content in any file.
 
 ```markdown
 ## Architecture
@@ -298,17 +295,17 @@ Commitment: [one sentence — composition, why this team, what it buys them]
 
 ## Phase 4 — ADR handling (robust numbering + index)
 
-**Always create an ADR. Create `/adr` if it doesn't exist — do not ask.**
+**Always create an ADR. Create `/adr` if it doesn't exist.**
 
 Folder preference: if `/docs/adr` or `/docs/decisions` already exist, use them; otherwise default to `/adr`.
 
-**Numbering:** list existing `*.md` ADRs, find the highest `NNN` prefix, use the next integer zero-padded to 3 digits. Empty/new folder → `001`. Never reuse or collide.
+**Numbering:** list existing `*.md` ADRs, find the highest `NNN` prefix, use the next integer zero-padded to 3 digits. Empty/new folder → `001`.
 
 **Filename:** `NNN-[architecture-name-slug].md` (e.g. `003-modular-monolith-clean.md`).
 
 **Index:** maintain `/adr/README.md` as a table of all ADRs (number, title, status, date). Create it if missing; append the new row.
 
-**Superseding:** if an accepted architecture ADR already exists and this decision changes it, set the old ADR's status to `Superseded by ADR-NNN` and set the new one's `Supersedes: ADR-MMM`. Don't silently duplicate.
+**Superseding:** if an accepted architecture ADR already exists and this decision changes it, set the old ADR's status to `Superseded by ADR-NNN` and set the new one's `Supersedes: ADR-MMM` instead of adding a parallel decision.
 
 **ADR structure — write it as a `.md` file with these exact sections:**
 
@@ -330,7 +327,7 @@ Frontmatter block (bold key/value pairs):
 
 `## Implementation notes` — enforceable rules summary + folder structure + naming conventions, copied and adapted from `references/enforceable-rules.md`. If the audit path was used, include the `## Migration plan` subsection here with steps in `todo/in progress/done` status.
 
-`## Architecture diagram` — a Mermaid `graph TD` or `flowchart TD` block showing layers/contexts and the direction of dependencies. Make it faithful to the chosen pattern (e.g. for Clean, arrows point inward; for Modular Monolith, show module boundaries and the shared kernel). This section is mandatory — a diagram communicates dependency direction far better than a folder tree. If the user has the Excalidraw MCP connected and prefers a richer visual, offer to generate one there instead.
+`## Architecture diagram` — a Mermaid `graph TD` or `flowchart TD` block showing layers/contexts and the direction of dependencies. Make it faithful to the chosen pattern (e.g. for Clean, dependency arrows point inward; for Modular Monolith, show module boundaries and the shared kernel). This section is mandatory. If the user has the Excalidraw MCP connected and prefers a richer visual, offer that as a follow-up after writing the Mermaid block.
 
 `## Review triggers` — bulleted list of concrete conditions that should prompt revisiting this decision (e.g. "Team passes 10 engineers → reconsider service split", "Read/write ratio exceeds 20:1 → add CQRS on read side").
 
@@ -358,9 +355,9 @@ When the user picks the audit branch (Phase 0.5):
 ---
 
 ## Tone and approach
-- Always run Phase 0 detection first — pre-filled quizzes respect the user's time.
-- Show the scoreboard before the verdict; a justified decision is a trusted decision.
+- Always run Phase 0 detection first and pre-fill the quiz.
+- Show the scoreboard before the verdict.
 - Be opinionated and commit to one recommendation.
 - Rules you write must be enforceable, tied to `references/enforceable-rules.md`.
-- Use the user's real domain language everywhere — never generic placeholders.
-- For early-stage projects, push back on over-engineering: a clean modular monolith beats a premature microservices disaster.
+- Use the user's real domain language everywhere.
+- For early-stage projects, push back on over-engineering.

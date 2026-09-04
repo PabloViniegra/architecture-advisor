@@ -10,7 +10,7 @@ A skill that recommends and persists a compatible software architecture composit
 2. **Interviews** you with 6 targeted questions (pre-filled from detection — just correct what's wrong).
 3. **Scores** candidates inside separate dimensions such as deployment topology, internal boundaries, domain model, presentation, integration, and runtime.
 4. **Recommends** one compatible composition with folder structure, trade-offs, and evolution path — using your real domain language.
-5. **Persists** the decision into `CLAUDE.md`/`AGENTS.md` + a numbered ADR in `/adr`, with enforceable dependency rules and an optional dependency linter config.
+5. **Persists** the decision into every agent-config file found (`AGENTS.md`/`CLAUDE.md`/Cursor/Copilot, else creates `AGENTS.md`) + a numbered ADR in `/adr`, with enforceable dependency rules and an optional dependency linter config.
 
 Works for greenfield projects and for **auditing existing codebases** — detecting violations and generating an incremental migration plan.
 
@@ -26,18 +26,17 @@ npx skills add PabloViniegra/architecture-advisor
 
 ## Usage
 
-Invoke explicitly — this skill does not trigger on architecture topics in passing:
+Invoke explicitly by name — this skill does not trigger on architecture topics in passing:
 
 ```
 /architecture-advisor
 run the architecture advisor
-help me choose an architecture
-audit my current architecture
+audit my current architecture with the architecture advisor
 ```
 
 ## What gets written to your repo
 
-- `CLAUDE.md` — `## Architecture` section with pattern, folder structure, and enforceable rules
+- `AGENTS.md` and/or `CLAUDE.md` (every existing agent-config file found, else `AGENTS.md` created) — `## Architecture` section with composition, folder structure, and enforceable rules
 - `/adr/NNN-[slug].md` — ADR with context, decision, alternatives considered, Mermaid diagram, and review triggers
 - `/adr/README.md` — ADR index (created or updated)
 - *(optional)* Empty folder scaffold with per-layer READMEs

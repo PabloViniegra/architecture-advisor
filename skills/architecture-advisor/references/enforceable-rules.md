@@ -283,6 +283,10 @@ layers =
     app.models
 ```
 
+---
+
+## CQRS
+
 **Dependency rules**
 - `commands/` (write side) and `queries/` (read side) are fully separate; neither imports the other.
 - Write side mutates aggregates; read side reads from denormalised read models only.
@@ -370,6 +374,10 @@ modules =
     pipeline.stages.load
 ```
 
+---
+
+## Serverless
+
 **Dependency rules**
 - Each function depends only on `shared/` + its own handler code; functions never import each other.
 - Business logic lives in `shared/` (testable without the cloud runtime); handlers are thin adapters.
@@ -407,6 +415,10 @@ module.exports = {
 - Deployment/replication config → `infra/`
 
 **dependency-cruiser** (TS/JS)
+```js
+module.exports = {
+  forbidden: [
+    { name: 'units-coordinate-through-grid',
       comment: 'Processing units coordinate only through the data grid, never directly',
       from: { path: '^src/units/([^/]+)' },
       to: { path: '^src/units/(?!\\1)[^/]+' } },

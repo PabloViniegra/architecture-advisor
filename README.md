@@ -1,15 +1,15 @@
 # Architecture Advisor
 
-A skill that recommends and persists the right software architecture for your project — or audits the one you already have.
+A skill that recommends and persists a compatible software architecture composition for your project — or audits the one you already have.
 
 ## What it does
 
-**detect → quiz → score → recommend → persist**
+**detect → quiz → score by dimension → compose → persist**
 
 1. **Detects** your stack, team size, and deployment signals automatically before asking anything.
 2. **Interviews** you with 6 targeted questions (pre-filled from detection — just correct what's wrong).
-3. **Scores** the candidate architectures transparently: you see the table, not just the verdict.
-4. **Recommends** one architecture with folder structure, trade-offs, and evolution path — using your real domain language.
+3. **Scores** candidates inside separate dimensions such as deployment topology, internal boundaries, domain model, presentation, integration, and runtime.
+4. **Recommends** one compatible composition with folder structure, trade-offs, and evolution path — using your real domain language.
 5. **Persists** the decision into `CLAUDE.md`/`AGENTS.md` + a numbered ADR in `/adr`, with enforceable dependency rules and an optional dependency linter config.
 
 Works for greenfield projects and for **auditing existing codebases** — detecting violations and generating an incremental migration plan.

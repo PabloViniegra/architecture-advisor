@@ -6,7 +6,7 @@ description: >
   or "help me choose an architecture with the advisor". Do NOT trigger automatically
   when architecture topics come up in conversation. When invoked: recommends and persists
   the best software architecture for a project by auto-detecting the stack, running a
-  scored quiz, and writing the decision into AGENTS.md / CLAUDE.md (whichever exists,
+  scored quiz, recommending a compatible architecture composition by dimension, and writing the decision into AGENTS.md / CLAUDE.md (whichever exists,
   defaulting to AGENTS.md as the open standard) plus a numbered ADR in /adr. Covers the full spectrum (Modular Monolith, Clean, Hexagonal, Screaming, DDD,
   CQRS, Event-Driven, Microservices, Layered, Serverless, MVC/MVP/MVVM, Pipeline,
   Space-Based, hybrids). Can also audit an existing codebase and propose an incremental
@@ -15,7 +15,7 @@ description: >
 
 # Architecture Advisor
 
-A structured decision engine: **detect → quiz → score → recommend → persist**. It works for greenfield projects and for auditing existing codebases, and it always leaves behind enforceable rules and an ADR so the decision doesn't erode over time.
+A structured decision engine: **detect → quiz → score by dimension → compose → persist**. It works for greenfield projects and for auditing existing codebases, and it always leaves behind enforceable rules and an ADR so the decision doesn't erode over time.
 
 ---
 
@@ -91,68 +91,96 @@ Use this exact question set:
 - C) Established — refactoring/evolving existing
 - D) Legacy migration — extracting from a monolith/old system
 
-**Q6 — Anything else?** *(free text — stack, deployment, existing infra, constraints, deadlines)* `[detected: ...]`
+**Q6 — Which constraints apply?** *(pick any, then add optional free text)* `[detected, not yet confirmed: ...]`
+- A) Independent deployments are required (`independent_deployments`)
+- B) Strict audit history is required (`strict_auditability`)
+- C) Reads and writes have very different scale or models (`asymmetric_reads_writes`)
+- D) Workflows are asynchronous or event-led (`asynchronous_workflows`)
+- E) Traffic is highly variable (`variable_traffic`)
+- F) Workloads are long-running or stateful (`long_running_stateful`)
+- G) DevOps capacity is limited (`limited_devops`)
+- H) The same core needs multiple inbound or outbound adapters (`multiple_adapters`)
+- I) Domain experts are available (`domain_experts_available`)
+- J) Extreme real-time scale is a proven requirement (`extreme_realtime_scale`)
+- K) None of these
+
+The user may add stack, infrastructure, deadline, or other context after the selected letters. Free text informs the explanation and folder examples, but **never changes a score directly**. Only confirmed Q6 tags may affect scoring. Detection may propose tags, but the user must confirm them first.
 
 If answers are contradictory (e.g. Q3:A + Q4:F), flag it in one sentence before scoring.
 
 ---
 
-## Phase 2 — Transparent scoring + recommendation
+## Phase 2 — Transparent scoring by dimension + recommendation
 
-Don't hand the user an opaque verdict. **Score the candidates and show your work**, then commit to one.
+Don't force unrelated architecture concepts into one ranking. Score candidates within their dimension, show the work, then compose a compatible recommendation.
 
 ### 2.1 Show the scoreboard
 
-Produce a table of the top 3–4 architectures with a numeric score, star rating, and a one-line reason tied to the user's actual answers.
+Produce one compact table with the winner and runner-up in each relevant dimension. Include the numeric score, star rating, and a one-line reason tied to confirmed answers.
 
 **Scoring rubric — apply mechanically, not by feel:**
 
-Each pattern starts at 0. Score every pattern against the user's answers using this table:
+Each candidate starts at 0. Compare candidates only within the same dimension. Score every candidate against the user's answers using this table:
 
 | Signal | Points |
 |---|---|
 | Q1 matches a "best-fit" signal for this pattern | +1 |
 | Q2 matches a "best-fit" signal | +1 |
 | Q3 matches a "best-fit" signal | +1 |
-| Q4 has ≥2 priorities aligned with this pattern's strengths | +1 |
+| At least one selected Q4 priority matches this candidate's best-fit signals | +1 |
 | Q5 matches a "best-fit" signal | +1 |
-| Q6 mentions tech/constraint that specifically favours this pattern | +1 |
+| A confirmed Q6 tag matches this candidate's best-fit signals | +1 |
 | Any answer matches an "avoid when" condition | −2 (cap: −2 per pattern total) |
 
-Maximum: 7 points. Convert to stars: 7=★★★★★, 5–6=★★★★☆, 3–4=★★★☆☆, 1–2=★★☆☆☆, 0 or below=★☆☆☆☆. Always show the numeric score in parentheses so the rating is auditable.
+Maximum: 6 points. Convert to stars: 6=★★★★★, 5=★★★★☆, 3–4=★★★☆☆, 1–2=★★☆☆☆, 0 or below=★☆☆☆☆. Always show the numeric score in parentheses so the rating is auditable.
 
-Example output:
+In the catalogue, ranges such as `Q3:A-B` mean A or B. A `+` between signals means all are required. Commas separate independent scoring signals or avoid conditions.
+
+Deployment topology and internal boundaries are baseline dimensions: select one winner in each. Domain model, presentation, data and integration, and runtime are optional overlays: include a non-default candidate only when it scores at least 3 without an avoid-condition hit. Evaluate each data and integration candidate independently because CQRS, EDA, and Pipeline may coexist.
+
+For ties, prefer in this order: fewer avoid-condition hits, lower operational complexity, then the earlier candidate in the dimension table. State the tie-break used.
+
+Example output for `Q1:A, Q2:D, Q3:C, Q4:B/C/D, Q5:A, Q6:D/E/H/I`:
 
 ```
 ## Architecture fit (based on your answers)
 
-| Architecture | Score | Fit | Why |
-|---|---:|:---:|---|
-| Modular Monolith + Clean | 6/7 | ★★★★☆ | Q3:B (+1) Q2:C (+1) Q5:A (+1) Q4:BC (+1) — no avoid-when hit |
-| Clean Architecture (plain) | 5/7 | ★★★★☆ | Strong on Q4:C, but without module boundaries you lose horizontal isolation Q3:B teams benefit from |
-| Microservices | 1/7 | ★★☆☆☆ | Q3:B + Q5:A both hit avoid-when (−2) — operational cost outweighs benefit at this stage |
-| Layered | 2/7 | ★★☆☆☆ | Q2:C hits avoid-when (−2) — domain complexity breaks the layer model |
+| Dimension | Winner | Score | Runner-up | Why |
+|---|---|---:|---|---|
+| Deployment topology | Modular Monolith | 3/6 ★★★☆☆ | Single deployable (2/6) | Q3:C, Q4:B and Q5:A favour explicit module boundaries in one deployable |
+| Internal boundaries | Clean Architecture | 3/6 ★★★☆☆ | Hexagonal (2/6) | Q2:D, Q4:B-C and Q5:A favour inward dependencies; Hexagonal matches Q4 and confirmed Q6:H |
+| Domain model | DDD | 3/6 ★★★☆☆ | Screaming (2/6) | Q2:D, Q4:B-C and confirmed Q6:I justify DDD |
+| Presentation pattern | None | — | MVC (-1/6) | Q1:A matches MVC, but Q2:D triggers its avoid condition |
+| Data and integration | None | — | EDA (2/6) | Q4:D and confirmed Q6:D are insufficient to reach the optional-overlay threshold |
+| Runtime model | Conventional runtime | — | Serverless (2/6) | Q4:D and confirmed Q6:D/E are insufficient to reach the optional-overlay threshold |
 ```
 
-### 2.2 Architecture catalogue (scoring reference)
+### 2.2 Architecture dimensions and catalogue
 
-| Pattern | Best-fit signals | Avoid when |
-|---|---|---|
-| **Layered (N-Tier)** | Q1:B, Q2:A, Q3:A-B, Q4:A | Q2:C-D — domain complexity breaks layers |
-| **Modular Monolith** | Q3:B-C, Q4:B, Q5:A-B | Q3:D — autonomous teams need deploy independence |
-| **Clean Architecture** | Q2:C-D, Q4:B-C, Q5:A-C | Q2:A + Q5:A — overkill for simple greenfield CRUD |
-| **Hexagonal / Ports & Adapters** | Q1:C, multiple adapters, Q4:B-C | Team unfamiliar; conceptual overhead |
-| **Screaming Architecture** | Q2:C-D, want domain-first structure | Q2:A — domain not rich enough |
-| **DDD** | Q2:D, Q4:B-C, domain experts available | Q2:A, tech-first, no domain expert |
-| **Microservices** | Q3:D, Q4:D-F, DevOps maturity | Q3:A-B, Q5:A-B — premature complexity |
-| **MVC / MVP / MVVM** | Q1:A, UI-heavy, Q2:A-B | Q2:C-D — logic doesn't fit resource model |
-| **CQRS** | Q4:D, asymmetric read/write, audit needs | Q2:A-B, Q3:A-B — heavy overhead |
-| **Event-Driven / EDA** | Q4:D-E-F, async, decoupled, Q1:C | Synchronous-only, small isolated system |
-| **Pipeline / Pipes & Filters** | Q1:D — ETL, sequential processing | Q1:A-B — wrong for interactive systems |
-| **Serverless** | Q4:D-G, variable traffic, event triggers | Long-running/stateful workflows |
-| **Space-Based** | Extreme scale, real-time grids | Q3:A-C — almost all business apps |
+Choose at most one candidate from each dimension except data and integration, where independently justified patterns may be combined. "None" or the stated default is a valid result. Patterns from different dimensions may be composed.
 
-**Common hybrids (often the right answer)**
+| Dimension | Candidate | Best-fit signals | Avoid when |
+|---|---|---|---|
+| **Deployment topology** | Single deployable (default) | Q3:A-B, Q4:A-G, Q5:A-B | Q3:D + Q6:`independent_deployments` |
+| | Modular Monolith | Q3:B-C, Q4:B, Q5:A-C | Q3:D + Q6:`independent_deployments` |
+| | Microservices | Q3:D, Q4:D-F, Q6:`independent_deployments` | Q3:A-B, Q5:A-B, Q6:`limited_devops` |
+| | Space-Based | Q4:D-E, Q6:`extreme_realtime_scale` | Q3:A-C, Q6:J not confirmed |
+| **Internal boundaries** | Layered (N-Tier) | Q1:B, Q2:A, Q3:A-B, Q4:A | Q2:C-D |
+| | Clean Architecture | Q2:C-D, Q4:B-C, Q5:A-C | Q2:A + Q5:A |
+| | Hexagonal / Ports & Adapters | Q1:C, Q4:B-C, Q6:`multiple_adapters` | Q2:A + Q3:A + Q6:H not confirmed |
+| **Domain model** | No additional domain pattern (default) | Q2:A-B | No avoid condition |
+| | Screaming Architecture | Q2:C-D, Q4:B | Q2:A |
+| | DDD | Q2:D, Q4:B-C, Q6:`domain_experts_available` | Q2:A, Q6:I not confirmed |
+| **Presentation pattern** | None (default) | Q1:B-E | No avoid condition |
+| | MVC / MVP / MVVM | Q1:A, Q2:A-B | Q2:C-D |
+| **Data and integration** | None (default) | Default; no score required | No avoid condition |
+| | CQRS | Q4:D, Q6:`asymmetric_reads_writes`, Q6:`strict_auditability` | Q2:A-B, Q3:A-B + neither Q6:B nor Q6:C confirmed |
+| | Event-Driven / EDA | Q1:C, Q4:D-F, Q6:`asynchronous_workflows` | Q3:A-B + Q6:D not confirmed |
+| | Pipeline / Pipes & Filters | Q1:D | Q1:A-B |
+| **Runtime model** | Conventional runtime (default) | Default; no score required | No avoid condition |
+| | Serverless | Q4:D-G, Q6:`variable_traffic`, Q6:`asynchronous_workflows` | Q6:`long_running_stateful` |
+
+**Common compositions**
 - **Modular Monolith + Clean** — single team, growing, complex-ish domain, wants optionality
 - **DDD + Hexagonal** — complex domain that must stay infra-agnostic
 - **DDD + CQRS + Event Sourcing** — audit-heavy financial/legal
@@ -161,13 +189,21 @@ Example output:
 
 ### 2.3 Recommendation
 
-After the scoreboard, commit to one with this structure:
+After the dimension scoreboard, commit to one compatible composition with this structure:
 
 ```
-## Recommendation: [Name]
+## Recommendation: [Composition name]
+
+### Decisions by dimension
+- Deployment topology: [winner]
+- Internal boundaries: [winner]
+- Domain model: [winner or none]
+- Presentation pattern: [winner or none]
+- Data and integration: [winner or none]
+- Runtime model: [winner]
 
 ### Why this wins for you
-[Reference their explicit Q1–Q6 answers]
+[Reference their explicit Q1–Q5 answers and confirmed Q6 tags]
 
 ### In practice
 [Code organisation, where logic lives, test strategy]
@@ -182,7 +218,7 @@ After the scoreboard, commit to one with this structure:
 [What to adopt when you outgrow this — ties to the ADR review triggers]
 
 ### Folder structure
-[Concrete tree using their actual domain language from Q6 — never UserService/OrderRepo placeholders]
+[Concrete tree using domain language from detected code and the user's free-text context — never UserService/OrderRepo placeholders]
 ```
 
 ---
@@ -212,7 +248,7 @@ When writing to multiple files, batch the confirmation into a single question if
 ```markdown
 ## Architecture
 
-**Pattern:** [Name(s)]  
+**Architecture composition:** [Name(s)]
 **Decision date:** [YYYY-MM-DD]  
 **Status:** Accepted  
 **ADR:** /adr/NNN-[slug].md
@@ -255,7 +291,7 @@ Ask the user two yes/no questions:
 - [scaffold: created N folders ✓ / skipped]
 - [linter: .dependency-cruiser.js created ✓ / skipped]
 
-Commitment: [one sentence — pattern, why this team, what it buys them]
+Commitment: [one sentence — composition, why this team, what it buys them]
 ```
 
 ---
@@ -281,14 +317,14 @@ Folder preference: if `/docs/adr` or `/docs/decisions` already exist, use them; 
 Frontmatter block (bold key/value pairs):
 - `**Date:**` YYYY-MM-DD
 - `**Status:**` Accepted
-- `**Deciders:**` from Q6, or "Project team"
+- `**Deciders:**` from the user's free-text context, or "Project team"
 - `**Supersedes:** ADR-MMM` — include only if replacing a prior decision
 
 `## Context` — synthesise Q1–Q6 + Phase 0 detection into one paragraph: what the system does, team size, domain complexity, scale expectations, stack, constraints.
 
-`## Decision` — "We adopt **[Pattern(s)]**." followed by 1–2 paragraphs on what this means concretely for this project.
+`## Decision` — list the selected result for each dimension, then state "We adopt **[Composition]**." Follow with 1–2 paragraphs on what this means concretely for this project.
 
-`## Considered alternatives` — table with columns Alternative / Score / Reason not chosen. Use the scores from the Phase 2 scoreboard; tie the reasoning to the user's actual answers, not generic prose.
+`## Considered alternatives` — table with columns Dimension / Alternative / Score / Reason not chosen. Compare alternatives only inside their dimension. Use the scores from Phase 2 and tie the reasoning to confirmed answers.
 
 `## Consequences` — two sub-lists: Positive (tied to Q4 priorities) and Negative (trade-offs accepted).
 

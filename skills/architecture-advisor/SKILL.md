@@ -133,7 +133,7 @@ Maximum: 6 points. Convert to stars: 6=★★★★★, 5=★★★★☆, 3–4
 
 In the catalogue, ranges such as `Q3:A-B` mean A or B. A `+` between signals means all are required. Commas separate independent scoring signals or avoid conditions. Example: `Q3:A-B + Q6:H not confirmed` fires only when (Q3 is A or B) AND (H unconfirmed); `Q3:A-B, Q5:A-B` fires when either holds. Each firing costs −2 once per pattern.
 
-Deployment topology and internal boundaries are baseline dimensions: select one winner in each. Domain model, presentation, data and integration, and runtime are optional overlays: include a non-default candidate only when it scores at least 3 without an avoid-condition hit. Evaluate each data and integration candidate independently because CQRS, EDA, and Pipeline may coexist.
+Deployment topology and internal boundaries are baseline dimensions: select one winner in each. Domain model, presentation, data and integration, and runtime are optional overlays: include a non-default candidate only when it meets its catalogue threshold and has no avoid-condition hit. Scores remain out of 6; the threshold only controls optional inclusion. Evaluate each data and integration candidate independently because CQRS, EDA, and Pipeline may coexist.
 
 For ties, prefer in this order: fewer avoid-condition hits, lower operational complexity, then the earlier candidate in the dimension table. State the tie-break used.
 
@@ -149,33 +149,35 @@ Example output for `Q1:A, Q2:D, Q3:C, Q4:B/C/D, Q5:A, Q6:D/E/H/I`:
 | Domain model | DDD | 3/6 ★★★☆☆ | Screaming (2/6) | Q2:D, Q4:B-C and confirmed Q6:I justify DDD |
 | Presentation pattern | None | — | MVC (-1/6) | Q1:A matches MVC, but Q2:D triggers its avoid condition |
 | Data and integration | None | — | EDA (2/6) | Q4:D and confirmed Q6:D are insufficient to reach the optional-overlay threshold |
-| Runtime model | Conventional runtime | — | Serverless (2/6) | Q4:D and confirmed Q6:D/E are insufficient to reach the optional-overlay threshold |
+| Runtime model | Serverless | 2/6 ★★★☆☆ | Conventional runtime (0/6) | Q4:D and confirmed Q6:D/E meet Serverless's 2/6 threshold with no avoid-condition hit |
 ```
 
 ### 2.2 Architecture dimensions and catalogue
 
 Choose at most one candidate from each dimension except data and integration, where independently justified patterns may be combined. "None" or the stated default is a valid result. Patterns from different dimensions may be composed.
 
-| Dimension | Candidate | Best-fit signals | Avoid when |
-|---|---|---|---|
-| **Deployment topology** | Single deployable (default) | Q3:A-B, Q4:A-G, Q5:A-B | Q3:D + Q6:`independent_deployments` |
-| | Modular Monolith | Q3:B-C, Q4:B, Q5:A-C | Q3:D + Q6:`independent_deployments` |
-| | Microservices | Q3:D, Q4:D-F, Q6:`independent_deployments` | Q3:A-B, Q5:A-B, Q6:`limited_devops` |
-| | Space-Based | Q4:D-E, Q6:`extreme_realtime_scale` | Q3:A-C, Q6:J not confirmed |
-| **Internal boundaries** | Layered (N-Tier) | Q1:B, Q2:A, Q3:A-B, Q4:A | Q2:C-D |
-| | Clean Architecture | Q2:C-D, Q4:B-C, Q5:A-C | Q2:A + Q5:A |
-| | Hexagonal / Ports & Adapters | Q1:C, Q4:B-C, Q6:`multiple_adapters` | Q2:A + Q3:A + Q6:H not confirmed |
-| **Domain model** | No additional domain pattern (default) | Q2:A-B | No avoid condition |
-| | Screaming Architecture | Q2:C-D, Q4:B | Q2:A |
-| | DDD | Q2:D, Q4:B-C, Q6:`domain_experts_available` | Q2:A, Q6:I not confirmed |
-| **Presentation pattern** | None (default) | Q1:B-E | No avoid condition |
-| | MVC / MVP / MVVM | Q1:A, Q2:A-B | Q2:C-D |
-| **Data and integration** | None (default) | Default; no score required | No avoid condition |
-| | CQRS | Q4:D, Q6:`asymmetric_reads_writes`, Q6:`strict_auditability` | Q2:A-B, Q3:A-B + Q6:B not confirmed + Q6:C not confirmed |
-| | Event-Driven / EDA | Q1:C, Q4:D-F, Q6:`asynchronous_workflows` | Q3:A-B + Q6:D not confirmed |
-| | Pipeline / Pipes & Filters | Q1:D | Q1:A-B |
-| **Runtime model** | Conventional runtime (default) | Default; no score required | No avoid condition |
-| | Serverless | Q4:D-G, Q6:`variable_traffic`, Q6:`asynchronous_workflows` | Q6:`long_running_stateful` |
+| Dimension | Candidate | Best-fit signals | Avoid when | Optional threshold |
+|---|---|---|---|---|
+| **Deployment topology** | Single deployable (default) | Q3:A-B, Q4:A-G, Q5:A-B | Q3:D + Q6:`independent_deployments` | — |
+| | Modular Monolith | Q3:B-C, Q4:B, Q5:A-C | Q3:D + Q6:`independent_deployments` | — |
+| | Microservices | Q3:D, Q4:D-F, Q6:`independent_deployments` | Q3:A-B, Q5:A-B, Q6:`limited_devops` | — |
+| | Space-Based | Q4:D-E, Q6:`extreme_realtime_scale` | Q3:A-C, Q6:J not confirmed | — |
+| **Internal boundaries** | Layered (N-Tier) | Q1:B, Q2:A, Q3:A-B, Q4:A | Q2:C-D | — |
+| | Clean Architecture | Q2:C-D, Q4:B-C, Q5:A-C | Q2:A + Q5:A | — |
+| | Hexagonal / Ports & Adapters | Q1:C, Q4:B-C, Q6:`multiple_adapters` | Q2:A + Q3:A + Q6:H not confirmed | — |
+| **Domain model** | No additional domain pattern (default) | Q2:A-B | No avoid condition | — |
+| | Screaming Architecture | Q2:C-D, Q4:B | Q2:A | 2/6 |
+| | DDD | Q2:D, Q4:B-C, Q6:`domain_experts_available` | Q2:A, Q6:I not confirmed | 3/6 |
+| **Presentation pattern** | None (default) | Q1:B-E | No avoid condition | — |
+| | MVC / MVP / MVVM | Q1:A, Q2:A-B | Q2:C-D | 2/6 |
+| **Data and integration** | None (default) | Default; no score required | No avoid condition | — |
+| | CQRS | Q4:D, Q6:`asymmetric_reads_writes`, Q6:`strict_auditability` | Q2:A-B, Q3:A-B + Q6:B not confirmed + Q6:C not confirmed | 2/6 |
+| | Event-Driven / EDA | Q1:C, Q4:D-F, Q6:`asynchronous_workflows` | Q3:A-B + Q6:D not confirmed | 3/6 |
+| | Pipeline / Pipes & Filters | Q1:D | Q1:A-B | 1/6 |
+| **Runtime model** | Conventional runtime (default) | Default; no score required | No avoid condition | — |
+| | Serverless | Q4:D-G, Q6:`variable_traffic`, Q6:`asynchronous_workflows` | Q6:`long_running_stateful` | 2/6 |
+
+The optional thresholds require every available scoring category for candidates whose catalogue maximum is below 3. This keeps a lower threshold from making a weak signal sufficient: Screaming and MVC need both of their Q2/Q4 or Q1/Q2 matches, CQRS and Serverless need Q4 plus one confirmed Q6 match, and Pipeline needs its Q1:D signal. A matched avoid condition still makes the candidate ineligible.
 
 **Common compositions**
 - **Modular Monolith + Clean** — single team, growing, complex-ish domain, wants optionality

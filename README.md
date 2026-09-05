@@ -46,3 +46,25 @@ audit my current architecture with the architecture advisor
 
 - Claude Code with skills support
 - `npx` (Node.js)
+
+## Validation
+
+Run the offline contract checks from the repository root with Python 3.12 or newer:
+
+```bash
+python -B -m unittest discover -s tests -v
+```
+
+No packages, credentials, or model calls are needed. Python is only required for contributors running these checks, not for using the skill. GitHub Actions runs the same command on pushes and pull requests.
+
+The suite reads the catalogue, quiz tags and point values directly from `skills/architecture-advisor/SKILL.md`. It checks:
+
+- Candidate scores against [30 hand-calculated reference cases](tests/cases.md), including Q4/Q6 caps, conjunctions and multiple avoid hits. Every catalogue candidate has a case.
+- Numeric scores in the published example scoreboard.
+- Quiz choices and tags referenced by catalogue conditions, and consistency of the rubric's caps and maximum.
+- Referenced rule files and dependency/placement sections for named, non-default patterns.
+- Whether every optional candidate has a reachable, explicit catalogue threshold.
+
+These are specification checks, not agent integration tests. The test-only evaluator implements the documented scoring notation; it is not a runtime recommendation engine. Unsupported notation fails rather than being silently ignored. Changes to that notation or the rubric's semantics need corresponding evaluator and case review.
+
+The checks do not verify model compliance, tie-breaking, architectural suitability, generated files, consent, or linter execution. A reachable threshold is necessary but does not prove that a candidate can win with a valid combination of answers. Optional thresholds are deliberately stricter for candidates with fewer scoring signals: a lower threshold still requires all of their available positive categories and no avoid-condition hit.

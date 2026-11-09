@@ -1,9 +1,19 @@
+<div align="center">
+
 # Architecture Advisor
 
 A skill for resolving a concrete architectural decision with project evidence and
 the smallest useful change. For existing systems and greenfield projects.
 
 **Frame → inspect → compare → recommend → validate. Persist only on request.**
+
+[![Validate skill contracts](https://github.com/PabloViniegra/architecture-advisor/actions/workflows/validate-skill.yml/badge.svg)](https://github.com/PabloViniegra/architecture-advisor/actions/workflows/validate-skill.yml)
+![Agent Skill](https://img.shields.io/badge/Agent%20Skill-SKILL.md-6f42c1)
+![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
+![Markdown](https://img.shields.io/badge/Markdown-000000?logo=markdown&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?logo=githubactions&logoColor=white)
+
+</div>
 
 ## What you get
 
@@ -77,3 +87,9 @@ usefulness improvement is claimed from passing the offline suite.
 Version 2 replaces the fixed quiz, architecture scores, mandatory ADRs, and generic
 rule catalogue with decision-oriented advice. Previously generated ADRs and agent
 instructions are not automatically migrated or removed.
+
+## Author
+
+![Pablo Viniegra's stack, rendered by GitSkins](https://www.gitskins.com/api/section/stack?username=PabloViniegra&theme=frosted&style=aura)
+
+Cards rendered by [GitSkins](https://www.gitskins.com/) from public GitHub data.

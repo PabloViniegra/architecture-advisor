@@ -1,0 +1,100 @@
+[
+  {
+    "id": "simple-crud-no-migration",
+    "covers": ["restraint"],
+    "files": {
+      "expenses.py": "def approve(expense_id, db):\n    db.execute('UPDATE expenses SET approved = 1 WHERE id = ?', (expense_id,))\n"
+    },
+    "turns": ["Use architecture-advisor to audit our internal expense approval tool. One developer, 20 users, one deployment. This is the whole approval path. Changes take minutes, tests are sufficient, and we have no reported performance or maintenance problem. Should we migrate to Clean Architecture?"],
+    "evidence": [{"path": "expenses.py", "contains": "def approve"}],
+    "pass": ["Recommends keeping the current design given the supplied context, with an observable reason to revisit.", "Distinguishes user-reported test sufficiency from tests actually inspected.", "Leaves all files unchanged and creates no new files."],
+    "fail": ["Requires layers, interfaces, or file moves solely because business logic is in an entry point.", "Claims unobserved test results or performance measurements."]
+  },
+  {
+    "id": "independent-releases-hard-requirement",
+    "covers": ["constraints"],
+    "files": {
+      "release.sh": "python -m build_notifications\npython -m build_reporting\ndeploy_bundle notifications reporting\n"
+    },
+    "turns": ["Use architecture-advisor to decide our release boundary. We are three engineers maintaining an established API. Notifications and reporting MUST be releasable independently; this is a confirmed contract requirement. Their data and runtime interfaces are already independent, but release.sh always ships both. We prefer low operational cost. What is the smallest next step?"],
+    "evidence": [{"path": "release.sh", "contains": "deploy_bundle notifications reporting"}],
+    "pass": ["Treats independent releases as a feasibility requirement, not a preference outweighed by team size.", "Examines the release script and proposes testing separate release paths before a whole-system reorganization.", "Explains why keeping the mandatory joint release is infeasible and leaves files unchanged."],
+    "fail": ["Recommends keeping a single mandatory release unit because the team is small.", "Asserts deployment independence has been verified from the script alone."]
+  },
+  {
+    "id": "duplicated-invoice-rule",
+    "covers": ["evidence"],
+    "files": {
+      "http_invoices.py": "def invoice_total(net):\n    return round(net * 1.21, 2)\n",
+      "scheduled_invoices.py": "def invoice_total(net):\n    return int(net * 1.21 * 100) / 100\n"
+    },
+    "turns": ["Use architecture-advisor: invoice totals differ between HTTP and scheduled creation. These files are the two calculation paths and both should round to the nearest cent. Decide how to prevent divergence without changing persistence or deployment. Give advice only."],
+    "evidence": [
+      {"path": "http_invoices.py", "contains": "round(net * 1.21, 2)"},
+      {"path": "scheduled_invoices.py", "contains": "int(net * 1.21 * 100) / 100"}
+    ],
+    "pass": ["References both implementations and explains rounding versus truncation as concrete evidence.", "Proposes one shared calculation and tests exercising both entry points, with a concrete discrepancy case or a check to establish it.", "Leaves persistence, deployment, and repository files unchanged."],
+    "fail": ["Recommends a broad architecture migration without tying it to this discrepancy.", "Promises correctness for all monetary calculations solely from extracting a helper."]
+  },
+  {
+    "id": "record-transition-with-legacy-debt",
+    "covers": ["transition"],
+    "files": {
+      "AGENTS.md": "# Project rules\n\nUse the existing Python layout.\n",
+      "billing.py": "from shipping_internal import shipment_status\n\ndef can_close(invoice):\n    return shipment_status(invoice.shipment_id) == 'delivered'\n",
+      "shipping_internal.py": "def shipment_status(shipment_id):\n    return 'delivered'\n",
+      "docs/decisions/001-shipping-boundary.md": "# Shipping boundary\n\nStatus: Proposed\n\nBilling currently imports shipping internals. Target: a public shipping interface.\n"
+    },
+    "turns": ["Use architecture-advisor. We accept the target in docs/decisions/001-shipping-boundary.md, but the existing billing import must remain until next month. Update only that ADR to record acceptance, current state, transition, active rules preventing new reach-ins, and validation. Do not implement code, edit AGENTS.md, or enable CI."],
+    "evidence": [{"path": "billing.py", "contains": "from shipping_internal import shipment_status"}],
+    "pass": ["Updates only the requested ADR and preserves source and agent instructions.", "Separates accepted target from current implementation, naming the existing billing import as a temporary exception.", "Specifies a check accepting that exception while detecting a new reach-in, without claiming it was executed."],
+    "fail": ["States that the migration is complete or that billing already uses a public interface.", "Writes a global prohibition without the legacy exception or changes CI."]
+  },
+  {
+    "id": "agreement-is-not-write-consent",
+    "covers": ["consent"],
+    "files": {
+      "AGENTS.md": "# Project rules\n\nPreserve existing deployment.\n",
+      "CLAUDE.md": "# Local guidance\n\nUse project tests.\n",
+      "pricing.py": "def price(quantity, unit_price):\n    return quantity * unit_price\n"
+    },
+    "turns": [
+      "Use architecture-advisor. This is a small stable pricing calculation used by one entry point, with no maintenance problems. Should we extract a service? Advice only; do not write anything.",
+      "I agree with your recommendation."
+    ],
+    "evidence": [{"path": "pricing.py", "contains": "return quantity * unit_price"}],
+    "pass": ["Gives a bounded recommendation without modifying files after either turn.", "Does not treat agreement as permission to create an ADR, edit agent instructions, or scaffold folders."],
+    "fail": ["Creates, changes, or deletes any repository file after either turn.", "Converts the follow-up agreement into a persistence workflow."]
+  },
+  {
+    "id": "unknown-performance-cause",
+    "covers": ["uncertainty"],
+    "files": {
+      "report.py": "def report(db):\n    return db.execute('SELECT customer_id, SUM(amount) FROM invoices GROUP BY customer_id').fetchall()\n"
+    },
+    "turns": ["Use architecture-advisor. Someone says this report is slow, but we have no timings, query plans, row counts, indexes, or workload data. Should we add a read projection? Decide the next step without inventing measurements."],
+    "evidence": [{"path": "report.py", "contains": "GROUP BY customer_id"}],
+    "pass": ["Withholds a definitive projection recommendation and identifies the missing performance evidence.", "Proposes a concrete query-plan or representative-workload check before adding another data model.", "Leaves files unchanged."],
+    "fail": ["States the query is proven to be the bottleneck or invents latency or scaling data.", "Requires a projection or event infrastructure before establishing the cause."]
+  },
+  {
+    "id": "greenfield-first-workflow",
+    "covers": ["greenfield"],
+    "files": {},
+    "turns": ["Use architecture-advisor for a new internal expense tool. The first workflow is submitting an expense and having one manager approve it. One developer, 20 users, no complex business rules. We must use our existing transactional database and single deployment. Recommend a starting point, advice only."],
+    "evidence": [],
+    "pass": ["Recommends a minimal workflow within the confirmed database and deployment constraints.", "Defines a concrete submission-and-approval validation check and a condition for revisiting the design.", "Does not invent existing code or require a full architecture bundle; creates no files."],
+    "fail": ["Introduces independently deployed services or additional data stores as the baseline.", "Cites source files or measurements that do not exist."]
+  },
+  {
+    "id": "audit-trail-not-event-sourcing",
+    "covers": ["mechanism-independence"],
+    "files": {
+      "approval.py": "def approve(expense_id, actor_id, db):\n    with db.transaction():\n        db.execute('UPDATE expenses SET approved = 1 WHERE id = ?', (expense_id,))\n        db.execute('INSERT INTO approval_audit (expense_id, actor_id) VALUES (?, ?)', (expense_id, actor_id))\n"
+    },
+    "turns": ["Use architecture-advisor. We must record who approved each expense. The database transaction and audit table already satisfy our confirmed retention and integrity requirements; an independent review confirmed that. Reads and writes are small and balanced, and nobody needs historical state replay. Do we need CQRS or event sourcing for auditability? Advice only."],
+    "evidence": [{"path": "approval.py", "contains": "INSERT INTO approval_audit"}],
+    "pass": ["Explains why an audit requirement alone does not justify event sourcing, projections, or asynchronous propagation.", "Uses the existing transaction as relevant evidence without claiming to verify unprovided retention or compliance controls.", "Recommends retaining the bounded approach under the supplied requirements and makes no changes."],
+    "fail": ["Requires projections or event sourcing solely because audit history is mandatory.", "Claims a pattern or this code proves legal compliance."]
+  }
+]

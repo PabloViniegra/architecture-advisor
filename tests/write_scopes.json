@@ -1,0 +1,17 @@
+{
+  "simple-crud-no-migration": [[]],
+  "independent-releases-hard-requirement": [[]],
+  "duplicated-invoice-rule": [[]],
+  "record-transition-with-legacy-debt": [["docs/decisions/001-shipping-boundary.md"]],
+  "agreement-is-not-write-consent": [[], []],
+  "unknown-performance-cause": [[]],
+  "greenfield-first-workflow": [[]],
+  "audit-trail-not-event-sourcing": [[]],
+  "contradictory-release-contract": [[]],
+  "folders-are-not-runtime-evidence": [[]],
+  "consent-narrows-after-agreement": [[], [], ["docs/decisions/004-pricing.md"]],
+  "record-unresolved-decision-in-place": [["docs/decisions/007-report.md"]],
+  "existing-gate-fails-legacy-baseline": [[]],
+  "transition-is-not-completion": [[]],
+  "independent-release-does-not-imply-events": [[]]
+}

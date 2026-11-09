@@ -1,22 +1,20 @@
 # Architecture Advisor
 
-A skill that recommends and persists a compatible software architecture composition for your project — or audits the one you already have.
+A skill for resolving a concrete architectural decision with project evidence and
+the smallest useful change. For existing systems and greenfield projects.
 
-## What it does
+**Frame → inspect → compare → recommend → validate. Persist only on request.**
 
-**detect → quiz → score by dimension → compose → persist**
+## What you get
 
-1. **Detects** your stack, team size, and deployment signals automatically before asking anything.
-2. **Interviews** you with 6 targeted questions (pre-filled from detection — just correct what's wrong).
-3. **Scores** candidates inside separate dimensions such as deployment topology, internal boundaries, domain model, presentation, integration, and runtime.
-4. **Recommends** one compatible composition with folder structure, trade-offs, and evolution path — using your real domain language.
-5. **Persists** the decision into every agent-config file found (`AGENTS.md`/`CLAUDE.md`/Cursor/Copilot, else creates `AGENTS.md`) + a numbered ADR in `/adr`, with enforceable dependency rules and an optional dependency linter config.
+- A decision tied to a real workflow, not a quiz-selected architecture label.
+- Evidence from relevant code and tests, separated from assumptions.
+- Up to three options, including keeping the current approach.
+- Hard constraints treated as requirements, not points that preferences can outweigh.
+- A bounded next step, its trade-offs, a validation check, and a reason to revisit it.
 
-Works for greenfield projects and for **auditing existing codebases** — detecting violations and generating an incremental migration plan.
-
-## Architectures covered
-
-Modular Monolith, Clean, Hexagonal/Ports & Adapters, Screaming, DDD, CQRS, Event-Driven, Microservices, Layered, Serverless, MVC/MVP/MVVM, Pipeline, Space-Based, and common hybrids.
+“Do not migrate” and “measure this before deciding” are valid recommendations.
+Patterns explain options; they do not dictate folders or introduce mechanisms by default.
 
 ## Install
 
@@ -24,47 +22,58 @@ Modular Monolith, Clean, Hexagonal/Ports & Adapters, Screaming, DDD, CQRS, Event
 npx skills add PabloViniegra/architecture-advisor
 ```
 
+Use an agent supporting `SKILL.md` skills and repository inspection. Installation
+through `npx` requires Node.js. The skill itself has no runtime dependencies.
+
 ## Usage
 
-Invoke explicitly by name — this skill does not trigger on architecture topics in passing:
+Invoke explicitly by name; architecture discussions alone do not activate the skill.
 
-```
+```text
 /architecture-advisor
-run the architecture advisor
-audit my current architecture with the architecture advisor
+Our invoice rule changes touch HTTP and scheduled jobs. Help find the smallest fix.
+
+Use architecture-advisor to decide whether notifications need independent releases.
+
+Run architecture-advisor on this new internal tool. The first workflow is approving
+expenses; we have one developer and must use the existing database and deployment.
 ```
 
-## What gets written to your repo
+For a broad audit, the skill starts with one representative workflow rather than
+judging the whole application from its folder names. If the goal is unclear, it asks
+a focused question instead of presenting a fixed questionnaire.
 
-- `AGENTS.md` and/or `CLAUDE.md` (every existing agent-config file found, else `AGENTS.md` created) — `## Architecture` section with composition, folder structure, and enforceable rules
-- `/adr/NNN-[slug].md` — ADR with context, decision, alternatives considered, Mermaid diagram, and review triggers
-- `/adr/README.md` — ADR index (created or updated)
-- *(optional)* Empty folder scaffold with per-layer READMEs
-- *(optional)* Dependency linter config (`.dependency-cruiser.js` / `.importlinter` / `.go-arch-lint.yml`) wired to CI
+## Changes to your repository
 
-## Requirements
+**Advice and audits do not write files by default.** Accepting advice does not authorize
+implementation or persistence. You can explicitly request an ADR, an implementation,
+or a scoped change to agent instructions or enforcement tooling.
 
-- Claude Code with skills support
-- `npx` (Node.js)
+When recording a decision, the skill follows existing conventions, distinguishes the
+current state from the target and active rules, and edits only the requested files.
+It does not copy a policy into every agent config or create scaffolding automatically.
 
 ## Validation
 
-Run the offline contract checks from the repository root with Python 3.12 or newer:
+Run the offline checks with Python 3.12 or newer:
 
 ```bash
 python -B -m unittest discover -s tests -v
 ```
 
-No packages, credentials, or model calls are needed. Python is only required for contributors running these checks, not for using the skill. GitHub Actions runs the same command on pushes and pull requests.
+They check the skill's structure, local references, explicit safety contracts, and
+evaluation-case integrity. No packages, credentials, or model calls are needed.
+GitHub Actions runs the same command on pushes and pull requests.
 
-The suite reads the catalogue, quiz tags and point values directly from `skills/architecture-advisor/SKILL.md`. It checks:
+**These checks do not demonstrate agent compliance or recommendation quality.**
+Behavioral cases live in [tests/scenarios.json](tests/scenarios.json), with a repeatable
+agent evaluation and blind comparison procedure in [tests/cases.md](tests/cases.md).
+They cover restraint, hard constraints, evidence, uncertainty, transitions, consent,
+and greenfield decisions. Agent evaluations must be run separately; no measured
+usefulness improvement is claimed from passing the offline suite.
 
-- Candidate scores against [30 hand-calculated reference cases](tests/cases.md), including Q4/Q6 caps, conjunctions and multiple avoid hits. Every catalogue candidate has a case.
-- Numeric scores in the published example scoreboard.
-- Quiz choices and tags referenced by catalogue conditions, and consistency of the rubric's caps and maximum.
-- Referenced rule files and dependency/placement sections for named, non-default patterns.
-- Whether every optional candidate has a reachable, explicit catalogue threshold.
+## Version 2
 
-These are specification checks, not agent integration tests. The test-only evaluator implements the documented scoring notation; it is not a runtime recommendation engine. Unsupported notation fails rather than being silently ignored. Changes to that notation or the rubric's semantics need corresponding evaluator and case review.
-
-The checks do not verify model compliance, tie-breaking, architectural suitability, generated files, consent, or linter execution. A reachable threshold is necessary but does not prove that a candidate can win with a valid combination of answers. Optional thresholds are deliberately stricter for candidates with fewer scoring signals: a lower threshold still requires all of their available positive categories and no avoid-condition hit.
+Version 2 replaces the fixed quiz, architecture scores, mandatory ADRs, and generic
+rule catalogue with decision-oriented advice. Previously generated ADRs and agent
+instructions are not automatically migrated or removed.

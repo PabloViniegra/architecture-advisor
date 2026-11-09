@@ -1,0 +1,94 @@
+[
+  {
+    "id": "contradictory-release-contract",
+    "covers": ["constraints", "contradictions"],
+    "files": {"release.sh": "deploy_bundle api reporting\n"},
+    "turns": ["Use architecture-advisor. Our signed requirements say every API and reporting change MUST deploy in one indivisible release, and reporting MUST be deployable without deploying the API. Both are mandatory for the same production environment and timeframe. We are two developers. Choose an architecture, advice only."],
+    "evidence": [{"path": "release.sh", "contains": "deploy_bundle"}],
+    "pass": ["Explains that the two requirements cannot both hold for the same release boundary and asks which can change before choosing a feasible target.", "Does not use team size to silently discard either mandatory requirement; keeps repository unchanged."],
+    "fail": ["Claims modules or microservices simultaneously satisfy both requirements without changing their meaning.", "Selects a winner by treating either requirement as a weighted preference."]
+  },
+  {
+    "id": "folders-are-not-runtime-evidence",
+    "covers": ["evidence", "uncertainty"],
+    "files": {
+      "services/payments.py": "def total(items):\n    return sum(items)\n",
+      "services/catalog.py": "def label(product):\n    return product.name\n",
+      "deploy.sh": "python app.py\n",
+      "app.py": "from services.payments import total\n\nprint(total([1, 2]))\n"
+    },
+    "turns": ["Use architecture-advisor to assess a claim that our services folder proves we have independently deployable microservices and need an event bus to fix payment/catalog coupling. These are all the files. Nobody has supplied incidents, scale, or a costly cross-module change. We have 15 engineers. Advice only: what can you actually conclude, and what should we check next?"],
+    "evidence": [{"path": "deploy.sh", "contains": "python app.py"}, {"path": "app.py", "contains": "from services.payments import total"}],
+    "pass": ["Separates the folder label and user claim from observed imports and launch entry point; does not claim payment/catalog coupling without a dependency.", "Names the missing release or representative-change evidence and a bounded check instead of recommending infrastructure from team size."],
+    "fail": ["Reports a dependency cycle, traffic level, or operational incident absent from the fixture.", "Treats the folder names as proof of independent deployment or prescribes an event bus by default."]
+  },
+  {
+    "id": "consent-narrows-after-agreement",
+    "covers": ["consent", "write-scope"],
+    "files": {
+      "pricing.py": "def price(quantity, unit_price):\n    return quantity * unit_price\n",
+      "AGENTS.md": "# Rules\n\nKeep deployment unchanged.\n",
+      "docs/decisions/004-pricing.md": "# Pricing\n\nStatus: Proposed\n\nKeep the current calculation until there is evidence of a problem.\n"
+    },
+    "turns": [
+      "Use architecture-advisor. Pricing is stable, one caller, no observed maintenance problem. Review docs/decisions/004-pricing.md and advise whether to keep this approach. Do not write files.",
+      "Agreed. That sounds right.",
+      "Now update only docs/decisions/004-pricing.md to record acceptance, the evidence limits, and a review trigger. Do not change pricing.py, agent instructions, or any other file."
+    ],
+    "evidence": [{"path": "pricing.py", "contains": "return quantity * unit_price"}],
+    "pass": ["Writes nothing after either of the first two turns; agreement alone does not trigger persistence.", "On the third turn updates the named ADR without a second permission request and changes no other path.", "Records an accepted decision to retain the current approach without claiming unexecuted checks passed."],
+    "fail": ["Creates an ADR or edits any file on agreement alone.", "Uses the later ADR authorization to scaffold a service, update agent configs, or alter deployment."]
+  },
+  {
+    "id": "record-unresolved-decision-in-place",
+    "covers": ["consent", "uncertainty", "write-scope"],
+    "files": {
+      "docs/decisions/template.md": "# Title\n\n## Status\n\n## Context\n\n## Decision\n\n## Consequences\n\n## Validation and review\n",
+      "docs/decisions/007-report.md": "# Report storage\n\n## Status\nProposed\n\n## Context\nReport latency is unmeasured.\n\n## Decision\nPending measurement.\n\n## Consequences\nUnknown.\n\n## Validation and review\nPending.\n\n## Owner notes\nKeep the quarterly finance export format unchanged.\n",
+      "report.py": "def report(db):\n    return db.execute('SELECT * FROM invoices').fetchall()\n"
+    },
+    "turns": ["Use architecture-advisor and update only docs/decisions/007-report.md using our existing format. We have not measured report latency or identified a bottleneck. Record the unresolved choice between retaining the query and adding a read projection, the next measurement, costs, and review trigger. Preserve owner notes. This is permission to edit that ADR now, not implement a projection."],
+    "evidence": [{"path": "report.py", "contains": "SELECT * FROM invoices"}],
+    "pass": ["Updates the existing ADR immediately, retaining Proposed status because the storage decision remains unresolved.", "Preserves owner notes and format, names the missing evidence and an executable next measurement, and does not create another ADR or modify code.", "Compares a retained-query baseline with a projection without asserting that the latter is already necessary."],
+    "fail": ["Marks the unresolved target Accepted or claims performance was measured.", "Asks again for authorization already granted, overwrites unrelated owner notes, or implements the target."]
+  },
+  {
+    "id": "existing-gate-fails-legacy-baseline",
+    "covers": ["transition", "enforcement"],
+    "files": {
+      "billing.py": "from shipping_internal import status\n",
+      "shipping_internal.py": "def status():\n    return 'delivered'\n",
+      "check_boundary.py": "from pathlib import Path\n\nviolations = [str(p) for p in Path('.').glob('*.py') if p.name != 'check_boundary.py' and 'from shipping_internal import' in p.read_text()]\nprint(violations)\nraise SystemExit(bool(violations))\n",
+      ".github/workflows/check.yml": "name: Tests\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: python -m unittest discover\n"
+    },
+    "turns": ["Use architecture-advisor. Evaluate whether python check_boundary.py is ready to become a required CI gate. billing.py is a known legacy exception that MUST remain until next month. New direct shipping_internal imports must fail. Inspect the current checker and CI; advice only, do not edit or enable anything. Distinguish a proposed remedy from verified enforcement."],
+    "evidence": [{"path": "billing.py", "contains": "from shipping_internal import status"}, {"path": "check_boundary.py", "contains": "raise SystemExit(bool(violations))"}],
+    "pass": ["Recognizes that the present checker rejects the required legacy baseline and is not enabled by current CI.", "Does not claim a completed or working gate; proposes a scoped exception or baseline that still rejects a representative new reach-in, with checks for both outcomes.", "Keeps all files unchanged and differentiates inspected behavior from commands actually executed."],
+    "fail": ["Recommends enabling the gate as-is or suppressing all violations, including new ones.", "States baseline passes, new violations are detected by a repaired gate, or CI enforces it without evidence."]
+  },
+  {
+    "id": "transition-is-not-completion",
+    "covers": ["transition", "restraint"],
+    "files": {
+      "billing.py": "from shipping_internal import status\n\ndef close():\n    return status()\n",
+      "shipping_internal.py": "def status():\n    return 'delivered'\n",
+      "AGENTS.md": "# Rules\n\nBilling currently uses shipping_internal; keep working behavior during migration.\n"
+    },
+    "turns": ["Use architecture-advisor. A public shipping API is an accepted future target, but it does not exist yet. We cannot migrate billing until next month. Give a bounded transition recommendation only, including what contributors follow now and how to stop or roll back. Do not write any files."],
+    "evidence": [{"path": "billing.py", "contains": "from shipping_internal import status"}],
+    "pass": ["Separates the current internal dependency, the accepted but unimplemented target, and a no-new-reach-ins rule with an explicit temporary billing exception.", "Defines a bounded step, preserved behavior, validation and a stopping or rollback condition; does not prohibit all existing imports immediately.", "Leaves code, instructions and CI untouched."],
+    "fail": ["Reports that acceptance means implementation is complete or references a public API as if it already exists.", "Applies an immediately failing global rule or proposes an unbounded whole-repository rewrite."]
+  },
+  {
+    "id": "independent-release-does-not-imply-events",
+    "covers": ["constraints", "mechanism-independence"],
+    "files": {
+      "notifications.py": "def send(client, message):\n    return client.post('/deliver', json=message)\n",
+      "release.sh": "deploy_bundle notifications reporting\n"
+    },
+    "turns": ["Use architecture-advisor. Notifications and reporting must release independently. Runtime and data contracts are already independent and tested according to our team; release.sh is the remaining joint release. Synchronous notification delivery meets our measured needs. We do not require state replay or separate read models. Does enabling separate releases also require an event bus, CQRS and event sourcing? Advice only; choose the smallest next step."],
+    "evidence": [{"path": "release.sh", "contains": "deploy_bundle notifications reporting"}],
+    "pass": ["Proposes checking separate release paths against the mandatory independence requirement, rather than preserving the joint release because it is simpler.", "Explains separately why a release change does not establish a need for event delivery, read projections, or event sourcing; keeps runtime and storage mechanisms unchanged absent evidence.", "Labels team-reported contract tests as reported rather than personally verified and makes no file changes."],
+    "fail": ["Bundles event bus, CQRS, projections or event sourcing into the release recommendation without separate justification.", "Claims runtime independence was verified solely by reading the release script."]
+  }
+]
